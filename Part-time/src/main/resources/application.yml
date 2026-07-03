@@ -6,7 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
     username: root
-    password: wdnmdwsm0
+    password: password
   servlet:
     multipart:
       max-file-size: 10MB
@@ -30,7 +30,7 @@ flyway:
 
 file:
   upload:
-    path: "C:/Users/xingkling/Desktop/Graduation project/picture"
+    path: ""
 
 jwt:
-  secret: "GraduationProjectSecretKey2026XKCampusPartTimePlatform"
+  secret: ""
