@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.FeedbackMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.Feedback">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="content" property="content"/>
+        <result column="image" property="image"/>
+        <result column="status" property="status"/>
+        <result column="reply" property="reply"/>
+        <result column="data" property="data"/>
+    </resultMap>
+    
+    <insert id="insert" parameterType="com.xk.entity.Feedback">
+        INSERT INTO feedback (user_id, content, image, `status`, reply, data)
+        VALUES (#{userId}, #{content}, #{image}, #{status}, #{reply}, #{data})
+    </insert>
+    
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM feedback WHERE id = #{id}
+    </delete>
+    
+    <update id="update" parameterType="com.xk.entity.Feedback">
+        UPDATE feedback
+        SET `status` = #{status},
+            reply = #{reply},
+            data = #{data}
+        WHERE id = #{id}
+    </update>
+    
+    <select id="selectById" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM feedback WHERE id = #{id}
+    </select>
+    
+    <select id="selectByUserId" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM feedback WHERE user_id = #{userId} ORDER BY data DESC
+    </select>
+    
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM feedback ORDER BY data DESC
+    </select>
+</mapper>

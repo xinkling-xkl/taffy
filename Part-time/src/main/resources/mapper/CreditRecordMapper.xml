@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.CreditRecordMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.CreditRecord">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="changeScore" column="change_score"/>
+        <result property="reason" column="reason"/>
+        <result property="actionType" column="action_type"/>
+        <result property="creditBefore" column="credit_before"/>
+        <result property="creditAfter" column="credit_after"/>
+        <result property="creditLevel" column="credit_level"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <select id="getCreditRecordsByUserId" resultMap="BaseResultMap">
+        SELECT * FROM credit_record
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <insert id="insertCreditRecord" parameterType="com.xk.entity.CreditRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO credit_record (user_id, change_score, reason, action_type, credit_before, credit_after, credit_level, created_at)
+        VALUES (#{userId}, #{changeScore}, #{reason}, #{actionType}, #{creditBefore}, #{creditAfter}, #{creditLevel}, NOW())
+    </insert>
+
+    <select id="getViolationCount" resultType="int">
+        SELECT COUNT(*) FROM credit_record
+        WHERE user_id = #{userId}
+        AND change_score &lt; 0
+        AND action_type IN ('late', 'absent', 'bad_rating')
+    </select>
+</mapper>

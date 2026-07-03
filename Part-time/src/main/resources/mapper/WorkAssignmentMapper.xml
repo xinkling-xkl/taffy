@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xk.mapper.WorkAssignmentMapper">
+
+    <select id="getMerchantTodayAssignments" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+        wa.id,
+        j.title as jobTitle,
+        u.name as studentName,
+        wa.time_slot,
+        wa.work_date,
+        j.address,
+        j.salary,
+        wa.status,
+        j.userId as merchantId
+        FROM work_assignment wa
+        INNER JOIN job j ON wa.job_id = j.id
+        INNER JOIN user u ON wa.student_id = u.id
+        WHERE j.userId = #{merchantId}
+        AND DATE(wa.work_date) = CURRENT_DATE()
+        AND wa.status IN ('assigned', 'checked_in', 'pending_confirmation', 'cancelled')
+        ORDER BY wa.time_slot, u.name
+    </select>
+
+    <select id="getMerchantHistoryAssignments" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            wa.id,
+            j.title as jobTitle,
+            u.name as studentName,
+            wa.time_slot,
+            wa.work_date,
+            j.address,
+            j.salary,
+            wa.status,
+            j.userId as merchantId,
+            a.check_in_time,
+            a.check_out_time,
+            a.attendance_status,
+            a.work_minutes
+        FROM
+            work_assignment wa
+                INNER JOIN job j ON wa.job_id = j.id
+                INNER JOIN user u ON wa.student_id = u.id
+                LEFT JOIN attendance a ON wa.id = a.work_assignment_id
+        WHERE
+            j.userId = #{merchantId}
+          AND wa.status IN ('assigned', 'checked_in', 'completed', 'cancelled')
+        ORDER BY
+            wa.work_date DESC, wa.time_slot
+    </select>
+
+    <select id="getWorkAssignmentById" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+        wa.*,
+        j.title as jobTitle,
+        u.name as studentName,
+        j.userId as merchantId
+        FROM work_assignment wa
+        INNER JOIN job j ON wa.job_id = j.id
+        INNER JOIN user u ON wa.student_id = u.id
+        WHERE wa.id = #{id}
+    </select>
+
+    <insert id="createWorkAssignment" parameterType="java.util.Map">
+        INSERT INTO work_assignment (
+            student_id,
+            job_id,
+            merchant_requirement_id,
+            work_date,
+            time_slot,
+            status
+        ) VALUES (
+            #{studentId},
+            #{jobId},
+            0,
+            #{workDate},
+            #{timeSlot},
+            #{status}
+        )
+    </insert>
+
+    <update id="updateWorkAssignmentStatus">
+        UPDATE work_assignment 
+        SET status = #{status}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <select id="getStudentAssignments" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            wa.id,
+            j.title as jobTitle,
+            wa.time_slot,
+            wa.work_date,
+            j.address,
+            j.salary,
+            wa.status
+        FROM
+            work_assignment wa
+        INNER JOIN
+            job j ON wa.job_id = j.id
+        WHERE
+            wa.student_id = #{studentId}
+            AND wa.status = 'assigned'
+        ORDER BY
+            wa.work_date DESC, wa.time_slot
+    </select>
+
+    <select id="getStudentIdsByDateAndSlot" resultType="java.lang.Integer">
+        SELECT DISTINCT student_id FROM work_assignment
+        WHERE work_date = #{workDate} AND time_slot = #{timeSlot}
+        AND status IN ('assigned', 'checked_in', 'pending_confirmation')
+    </select>
+
+    <select id="getActiveAssignmentsByJobId" resultType="map">
+        SELECT wa.id, wa.student_id, wa.time_slot, wa.work_date, wa.status,
+               u.name as studentName
+        FROM work_assignment wa
+                 JOIN user u ON wa.student_id = u.id
+        WHERE wa.job_id = #{jobId}
+          AND wa.status IN ('assigned', 'checked_in')
+        ORDER BY u.name, wa.work_date
+    </select>
+    <select id="getActiveAssignmentsByJobIdAndStudent" resultType="map">
+        SELECT * FROM work_assignment
+        WHERE job_id = #{jobId}
+          AND student_id = #{studentId}
+          AND status IN ('assigned', 'checked_in')
+    </select>
+    <select id="getActiveAssignmentsByStudentAndJob" resultType="map">
+        SELECT id FROM work_assignment
+        WHERE student_id = #{studentId}
+          AND job_id = #{jobId}
+          AND work_date = #{workDate}
+          AND time_slot = #{timeSlot}
+          AND status IN ('assigned', 'checked_in', 'pending_confirmation')
+            LIMIT 1
+    </select>
+    <select id="getHistoryAssignmentsByMerchant" resultType="map">
+        SELECT wa.student_id, u.name as studentName, u.credit,
+               j.title as lastJobTitle, wa.work_date as lastWorkDate,
+               wa.id as lastWorkAssignmentId, j.id as lastJobId
+        FROM work_assignment wa
+                 JOIN user u ON wa.student_id = u.id
+                 JOIN job j ON wa.job_id = j.id
+        WHERE j.userId = #{merchantId}
+          AND wa.status IN ('completed', 'cancelled')
+          AND (wa.student_id, wa.id) IN (
+            SELECT wa2.student_id, MAX(wa2.id)
+            FROM work_assignment wa2
+                     JOIN job j2 ON wa2.job_id = j2.id
+            WHERE j2.userId = #{merchantId} AND wa2.status IN ('completed', 'cancelled')
+            GROUP BY wa2.student_id
+        )
+        ORDER BY wa.work_date DESC
+    </select>
+
+    <select id="getStudentAcceptedJobs" resultType="map">
+        SELECT wa.id, wa.student_id, wa.job_id, wa.time_slot, wa.work_date, wa.status,
+               j.title as jobTitle, j.salary, j.address, j.remunerationType,
+               j.userId as merchantId, j.recruitmentLimit,
+               u.name as merchantName, u.phone as merchantPhone
+        FROM work_assignment wa
+                 JOIN job j ON wa.job_id = j.id
+                 JOIN user u ON j.userId = u.id
+        WHERE wa.student_id = #{studentId}
+          AND wa.status IN ('assigned', 'checked_in', 'pending_confirmation')
+        ORDER BY j.id, wa.work_date, wa.time_slot
+    </select>
+    <select id="getOccupiedSlotsForStudent" resultType="map">
+        SELECT DISTINCT work_date, time_slot
+        FROM work_assignment
+        WHERE student_id = #{studentId}
+        AND work_date >= #{fromDate}
+        AND status IN ('assigned', 'checked_in', 'pending_confirmation')
+    </select>
+    <!-- WorkAssignmentMapper.xml -->
+    <select id="getActiveAssignmentsByDayAndSlot" resultType="map">
+        SELECT wa.id
+        FROM work_assignment wa
+        WHERE wa.student_id = #{studentId}
+          AND wa.status IN ('assigned', 'checked_in')
+          AND DAYOFWEEK(wa.work_date) = #{dayOfWeek}
+          AND wa.time_slot = #{timeSlot}
+    </select>
+</mapper>

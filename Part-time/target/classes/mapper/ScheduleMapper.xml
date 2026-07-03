@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xk.mapper.ScheduleMapper">
+
+    <select id="getStudentSchedule" parameterType="java.lang.Integer" resultType="com.xk.entity.StudentSchedule">
+        SELECT * FROM student_schedule WHERE student_id = #{studentId} ORDER BY day_of_week, time_slot
+    </select>
+
+    <delete id="deleteStudentSchedule">
+        DELETE FROM student_schedule WHERE student_id = #{studentId} AND day_of_week = #{dayOfWeek} AND time_slot = #{timeSlot}
+    </delete>
+
+    <insert id="insertStudentSchedule" parameterType="com.xk.entity.StudentSchedule">
+        INSERT INTO student_schedule (student_id, day_of_week, time_slot, is_available, created_at, updated_at)
+        VALUES (#{studentId}, #{dayOfWeek}, #{timeSlot}, #{isAvailable}, NOW(), NOW())
+    </insert>
+
+    <select id="getMerchantRequirements" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            mr.id,
+            mr.job_id,
+            j.title as jobTitle,
+            mr.day_of_week,
+            mr.time_slot,
+            mr.needed_count,
+            mr.filled_count
+        FROM
+            merchant_requirement mr
+        LEFT JOIN
+            job j ON mr.job_id = j.id
+        WHERE
+            mr.merchant_id = #{merchantId}
+        ORDER BY
+            mr.day_of_week, mr.time_slot
+    </select>
+
+    <select id="isStudentScheduleAvailable" resultType="java.lang.Boolean">
+        SELECT CASE WHEN COUNT(*) > 0 AND MAX(is_available) = 1 THEN true ELSE false END
+        FROM student_schedule
+        WHERE student_id = #{studentId} AND day_of_week = #{dayOfWeek} AND time_slot = #{timeSlot}
+    </select>
+
+    <select id="getStudentScheduleByDayAndSlot" resultType="com.xk.entity.StudentSchedule">
+        SELECT * FROM student_schedule
+        WHERE student_id = #{studentId} AND day_of_week = #{dayOfWeek} AND time_slot = #{timeSlot}
+        LIMIT 1
+    </select>
+
+    <update id="updateStudentSchedule">
+        INSERT INTO student_schedule (student_id, day_of_week, time_slot, is_available)
+        VALUES (#{studentId}, #{dayOfWeek}, #{timeSlot}, #{isAvailable})
+            ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
+    </update>
+    <select id="findAvailableStudentIds" resultType="java.lang.Integer">
+        SELECT DISTINCT student_id
+        FROM student_schedule
+        WHERE day_of_week = #{dayOfWeek}
+          AND time_slot = #{timeSlot}
+          AND is_available = 1
+    </select>
+
+    <select id="getUnfilledMerchantRequirements" resultType="map">
+        SELECT mr.job_id AS jobId, j.title AS jobTitle, mr.day_of_week AS dayOfWeek,
+        mr.time_slot AS timeSlot, mr.needed_count AS neededCount, mr.filled_count AS filledCount,
+        (mr.needed_count - mr.filled_count) AS gapCount
+        FROM merchant_requirement mr
+        JOIN job j ON j.id = mr.job_id
+        WHERE mr.merchant_id = #{merchantId}
+        AND mr.filled_count &lt; mr.needed_count
+        AND j.status = '进行中'
+        AND (
+            mr.day_of_week &gt; CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+            OR (
+                mr.day_of_week = CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+                AND (
+                    (mr.time_slot = 'morning' AND CURTIME() &lt; '09:00:00')
+                    OR (mr.time_slot = 'afternoon' AND CURTIME() &lt; '14:00:00')
+                    OR (mr.time_slot = 'evening' AND CURTIME() &lt; '18:00:00')
+                )
+            )
+        )
+        ORDER BY mr.day_of_week, mr.time_slot
+    </select>
+
+    <select id="getStudentRemainingFreeSlots" resultType="java.util.Map">
+        SELECT ss.day_of_week AS dayOfWeek, ss.time_slot AS timeSlot
+        FROM student_schedule ss
+        WHERE ss.student_id = #{studentId}
+          AND ss.is_available = 1
+        ORDER BY ss.day_of_week, ss.time_slot
+    </select>
+
+    <select id="findAvailableStudentsForSlot" resultType="java.lang.Integer">
+        SELECT DISTINCT ss.student_id
+        FROM student_schedule ss
+        JOIN user u ON u.id = ss.student_id
+        WHERE ss.day_of_week = #{dayOfWeek}
+          AND ss.time_slot = #{timeSlot}
+          AND ss.is_available = 1
+          AND u.identity = '学生'
+          AND u.credit >= 50
+          AND (u.is_penalty IS NULL OR u.is_penalty = 0)
+    </select>
+
+    <select id="getStudentsByDayAndSlot" resultType="java.util.Map">
+        SELECT u.id, u.name, u.phone, u.credit, u.timepreference
+        FROM user u
+        JOIN student_schedule ss ON ss.student_id = u.id
+        WHERE u.identity = '学生'
+          AND ss.day_of_week = #{dayOfWeek}
+          AND ss.time_slot = #{timeSlot}
+          AND ss.is_available = 1
+          AND u.credit >= 50
+          AND (u.is_penalty IS NULL OR u.is_penalty = 0)
+    </select>
+
+    <select id="getStudentsByDay" resultType="java.util.Map">
+        SELECT DISTINCT u.id, u.name, u.phone, u.credit, u.timepreference
+        FROM user u
+        JOIN student_schedule ss ON ss.student_id = u.id
+        WHERE u.identity = '学生'
+          AND ss.day_of_week = #{dayOfWeek}
+          AND ss.is_available = 1
+          AND u.credit >= 50
+          AND (u.is_penalty IS NULL OR u.is_penalty = 0)
+    </select>
+
+    <select id="findStudentsByTimePreference" resultType="java.lang.Integer">
+        SELECT id FROM user
+        WHERE identity = '学生'
+          AND credit >= 50
+          AND (is_penalty IS NULL OR is_penalty = 0)
+          AND timepreference IS NOT NULL
+          AND JSON_CONTAINS(timepreference, JSON_OBJECT('day', #{dayOfWeek}, 'period', #{period}))
+    </select>
+
+    <select id="getStudentFreeSlotsFromPreference" resultType="java.util.Map">
+        SELECT timepreference FROM user WHERE id = #{studentId} AND timepreference IS NOT NULL
+    </select>
+
+    <select id="getStudentsByDayAndSlotPref" resultType="java.util.Map">
+        SELECT id, name, phone, credit, timepreference
+        FROM user
+        WHERE identity = '学生'
+          AND credit >= 50
+          AND (is_penalty IS NULL OR is_penalty = 0)
+          AND timepreference IS NOT NULL
+          AND JSON_CONTAINS(timepreference, JSON_OBJECT('day', #{dayOfWeek}, 'period', #{period}))
+    </select>
+
+    <select id="getStudentsByDayPref" resultType="java.util.Map">
+        SELECT id, name, phone, credit, timepreference
+        FROM user
+        WHERE identity = '学生'
+          AND credit >= 50
+          AND (is_penalty IS NULL OR is_penalty = 0)
+          AND timepreference IS NOT NULL
+          AND timepreference LIKE CONCAT('%day', '":', #{dayOfWeek}, '%')
+    </select>
+</mapper>

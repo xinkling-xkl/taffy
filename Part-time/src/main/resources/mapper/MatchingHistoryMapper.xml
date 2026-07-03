@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.MatchingHistoryMapper">
+    <insert id="insert">
+        INSERT INTO matching_history (user_id, query, result, match_count)
+        VALUES (#{userId}, #{query}, #{result}, #{matchCount})
+    </insert>
+    <select id="selectByUserId" resultType="map">
+        SELECT id, query, result, match_count, created_at
+        FROM matching_history
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+            LIMIT #{limit}
+    </select>
+    <delete id="deleteById">
+        DELETE FROM matching_history WHERE id = #{id}
+    </delete>
+    <delete id="deleteByUserId">
+        DELETE FROM matching_history WHERE user_id = #{userId}
+    </delete>
+</mapper>

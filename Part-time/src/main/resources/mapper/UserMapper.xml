@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.UserMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.User">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="rname" column="rname"/>
+        <result property="number" column="number"/>
+        <result property="idcard" column="idcard"/>
+        <result property="age" column="age"/>
+        <result property="phone" column="phone"/>
+        <result property="image" column="image"/>
+        <result property="password" column="password"/>
+        <result property="identity" column="identity"/>
+        <result property="credit" column="credit"/>
+        <result property="isworking" column="isworking"/>
+        <result property="timepreference" column="timepreference"/>
+    </resultMap>
+
+    <select id="userList" resultMap="BaseResultMap">
+        select * from user
+    </select>
+
+    <select id="userListByPage" resultMap="BaseResultMap">
+        select * from user limit #{offset}, #{size}
+    </select>
+
+    <select id="getUserCount" resultType="int">
+        select count(*) from user
+    </select>
+
+    <select id="getUserById" resultMap="BaseResultMap">
+        select * from user where id = #{id}
+    </select>
+
+    <insert id="addUser" parameterType="com.xk.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (name, age, phone, image, password, identity, credit, rname, number, idcard, isworking, timepreference, created_at)
+        VALUES (#{name}, #{age}, #{phone}, #{image}, #{password}, #{identity}, #{credit}, #{rname}, #{number}, #{idcard}, #{isworking}, #{timepreference}, NOW())
+    </insert>
+
+    <update id="updateUser" parameterType="com.xk.entity.User">
+        UPDATE user
+        SET name = #{name},
+            age = #{age},
+            phone = #{phone},
+            image = #{image},
+            password = #{password},
+            identity = #{identity},
+            credit = #{credit},
+            rname = #{rname},
+            number = #{number},
+            idcard = #{idcard},
+            isworking = #{isworking},
+            timepreference = #{timepreference}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteUserById" parameterType="int">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+    <select id="findByPhoneAndPassword" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE phone = #{phone} AND password = #{password}
+    </select>
+
+    <select id="findByNameAndPassword" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE LOWER(name) = LOWER(#{name}) AND password = #{password}
+    </select>
+
+    <select id="findByName" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE LOWER(name) = LOWER(#{name}) LIMIT 1
+    </select>
+
+    <select id="findByPhone" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE phone = #{phone} LIMIT 1
+    </select>
+
+    <select id="findByNumber" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE number = #{number} LIMIT 1
+    </select>
+
+    <select id="findByRname" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE rname = #{rname} LIMIT 1
+    </select>
+
+    <select id="findByIdcard" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE idcard = #{idcard} LIMIT 1
+    </select>
+
+    <update id="updateTimePreference" parameterType="map">
+        UPDATE user
+        SET timepreference = #{timepreference}
+        WHERE id = #{userId}
+    </update>
+
+    <update id="updateWorkingStatus">
+        UPDATE user SET isworking = #{isworking} WHERE id = #{userId}
+    </update>
+
+    <select id="getAvailableStudents" resultMap="BaseResultMap">
+        SELECT * FROM user
+        WHERE identity = '学生'
+          AND (isworking IS NULL OR isworking = 0)
+    </select>
+
+    <select id="getAvailableStudentCount" resultType="int">
+        SELECT COUNT(*) FROM user
+        WHERE identity = '学生'
+          AND (isworking IS NULL OR isworking = 0)
+    </select>
+
+    <select id="getPenaltyUsers" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE is_penalty = 1 AND credit &lt; 50
+    </select>
+    <select id="getAllStudents" resultMap="BaseResultMap">
+        SELECT * FROM user WHERE identity = '学生'
+    </select>
+</mapper>

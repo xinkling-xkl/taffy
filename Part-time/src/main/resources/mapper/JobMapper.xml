@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.JobMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.Job">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="content" property="content"/>
+        <result column="address" property="address"/>
+        <result column="phone" property="phone"/>
+        <result column="imageUrl" property="imageUrl"/>
+        <result column="userId" property="userId"/>
+        <result column="status" property="status"/>
+        <result column="createTime" property="createTime"/>
+        <result column="salary" property="salary"/>
+        <result column="time" property="time"/>
+        <result column="remunerationType" property="remunerationType"/>
+        <result column="category" property="category"/>
+        <result column="recruitmentLimit" property="recruitmentLimit"/>
+        <result column="applicationCount" property="applicationCount"/>
+        <result column="tags" property="tags"/>
+    </resultMap>
+    
+    <insert id="insert" parameterType="com.xk.entity.Job" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO job (title, content, address, phone, imageUrl, userId, status, createTime, salary, time, remunerationType, category, recruitmentLimit, applicationCount, tags)
+        VALUES (#{title}, #{content}, #{address}, #{phone}, #{imageUrl}, #{userId}, #{status}, #{createTime}, #{salary}, #{time,jdbcType=VARCHAR}, #{remunerationType}, #{category}, #{recruitmentLimit}, #{applicationCount}, #{tags,jdbcType=VARCHAR})
+    </insert>
+
+    <update id="update" parameterType="com.xk.entity.Job">
+        UPDATE job
+        SET title = #{title},
+            content = #{content},
+            address = #{address},
+            phone = #{phone},
+            imageUrl = #{imageUrl},
+            userId = #{userId},
+            status = #{status},
+            createTime = #{createTime},
+            salary = #{salary},
+            time = #{time,jdbcType=VARCHAR},
+            remunerationType = #{remunerationType},
+            category = #{category},
+            recruitmentLimit = #{recruitmentLimit},
+            applicationCount = #{applicationCount},
+            tags = #{tags,jdbcType=VARCHAR}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM job WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM job ORDER BY createTime DESC
+    </select>
+
+    <select id="selectByUserId" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM job WHERE userId = #{userId} ORDER BY createTime DESC
+    </select>
+
+    <select id="selectAvailable" resultMap="BaseResultMap">
+        SELECT * FROM job WHERE status = '进行中' ORDER BY createTime DESC
+    </select>
+
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM job WHERE id = #{id}
+    </delete>
+    
+    <insert id="insertMerchantRequirement">
+        INSERT INTO merchant_requirement (job_id, merchant_id, day_of_week, time_slot, needed_count, filled_count)
+        VALUES (#{jobId}, #{merchantId}, #{dayOfWeek}, #{timeSlot}, #{neededCount}, 0)
+    </insert>
+    
+    <delete id="deleteMerchantRequirementByJobId">
+        DELETE FROM merchant_requirement WHERE job_id = #{jobId}
+    </delete>
+    
+    <delete id="deleteWorkAssignmentsByJobId">
+        DELETE FROM work_assignment WHERE job_id = #{jobId}
+    </delete>
+
+    <update id="updateMerchantRequirementFilledCount">
+        UPDATE merchant_requirement
+        SET filled_count = CASE
+                               WHEN #{increment} > 0 THEN LEAST(filled_count + #{increment}, needed_count)
+                               ELSE GREATEST(filled_count + #{increment}, 0)
+            END
+        WHERE job_id = #{jobId}
+          AND day_of_week = #{dayOfWeek}
+          AND time_slot = #{timeSlot}
+    </update>
+    <update id="updateJobStatus">
+        UPDATE job SET status = #{status} WHERE id = #{jobId}
+    </update>
+    <insert id="insertMerchantRequirementWithFilled">
+        INSERT INTO merchant_requirement (job_id, merchant_id, day_of_week, time_slot, needed_count, filled_count)
+        VALUES (#{jobId}, #{merchantId}, #{dayOfWeek}, #{timeSlot}, #{neededCount}, #{filledCount})
+    </insert>
+
+    <select id="selectByDayAndSlot" resultMap="BaseResultMap">
+        SELECT DISTINCT j.* FROM job j
+        JOIN merchant_requirement mr ON mr.job_id = j.id
+        WHERE j.status = '进行中'
+          AND mr.day_of_week = #{dayOfWeek}
+          AND mr.time_slot = #{timeSlot}
+          AND mr.filled_count &lt; mr.needed_count
+          AND (
+              mr.day_of_week &gt; CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+              OR (
+                  mr.day_of_week = CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+                  AND (
+                      (mr.time_slot = 'morning' AND CURTIME() &lt; '09:00:00')
+                      OR (mr.time_slot = 'afternoon' AND CURTIME() &lt; '14:00:00')
+                      OR (mr.time_slot = 'evening' AND CURTIME() &lt; '18:00:00')
+                  )
+              )
+          )
+        ORDER BY j.createTime DESC
+    </select>
+
+    <select id="selectByDay" resultMap="BaseResultMap">
+        SELECT DISTINCT j.* FROM job j
+        JOIN merchant_requirement mr ON mr.job_id = j.id
+        WHERE j.status = '进行中'
+          AND mr.day_of_week = #{dayOfWeek}
+          AND mr.filled_count &lt; mr.needed_count
+          AND (
+              mr.day_of_week &gt; CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+              OR (
+                  mr.day_of_week = CASE DAYOFWEEK(CURDATE()) WHEN 1 THEN 7 ELSE DAYOFWEEK(CURDATE()) - 1 END
+                  AND (
+                      (mr.time_slot = 'morning' AND CURTIME() &lt; '09:00:00')
+                      OR (mr.time_slot = 'afternoon' AND CURTIME() &lt; '14:00:00')
+                      OR (mr.time_slot = 'evening' AND CURTIME() &lt; '18:00:00')
+                  )
+              )
+          )
+        ORDER BY j.createTime DESC
+    </select>
+</mapper>

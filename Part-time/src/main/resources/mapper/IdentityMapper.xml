@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.IdentityMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.Identity">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="imageurl" property="imageurl"/>
+        <result column="bname" property="bname"/>
+        <result column="respond" property="respond"/>
+        <result column="status" property="status"/>
+        <result column="data" property="data"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.xk.entity.Identity">
+        INSERT INTO identity (user_id, imageurl, bname, respond, status, data)
+        VALUES (#{userId}, #{imageurl}, #{bname}, #{respond}, #{status}, #{data})
+    </insert>
+
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM identity WHERE id = #{id}
+    </delete>
+
+    <update id="update" parameterType="com.xk.entity.Identity">
+        UPDATE identity
+        SET status = #{status},
+            respond = #{respond},
+            data = #{data}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM identity WHERE id = #{id}
+    </select>
+
+    <select id="selectByUserId" parameterType="int" resultMap="BaseResultMap">
+        SELECT * FROM identity WHERE user_id = #{userId} ORDER BY data DESC
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT * FROM identity ORDER BY data DESC
+    </select>
+</mapper>

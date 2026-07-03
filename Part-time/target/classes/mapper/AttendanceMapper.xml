@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xk.mapper.AttendanceMapper">
+
+    <select id="getTodayAttendance" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            wa.id,
+            j.title as jobTitle,
+            wa.time_slot,
+            wa.work_date,
+            j.address,
+            j.salary,
+            wa.status,
+            a.*
+        FROM
+            work_assignment wa
+        LEFT JOIN
+            job j ON wa.job_id = j.id
+        LEFT JOIN
+            attendance a ON wa.id = a.work_assignment_id
+        WHERE
+            wa.student_id = #{studentId}
+            AND DATE(wa.work_date) = CURRENT_DATE()
+        ORDER BY
+            wa.work_date, wa.time_slot
+    </select>
+
+    <select id="getHistoryAttendance" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+        wa.id as assignmentId,
+        j.title as jobTitle,
+        j.id as jobId,   <!-- 新增 -->
+        wa.time_slot,
+        wa.work_date,
+        wa.status,
+        a.check_in_time,
+        a.check_out_time,
+        a.attendance_status,
+        a.work_minutes
+        FROM
+            work_assignment wa
+        LEFT JOIN
+            job j ON wa.job_id = j.id
+        LEFT JOIN
+            attendance a ON wa.id = a.work_assignment_id
+        WHERE
+            wa.student_id = #{studentId}
+        ORDER BY
+            wa.work_date DESC
+    </select>
+
+    <select id="getAttendanceByAssignmentId" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT * FROM attendance WHERE work_assignment_id = #{workAssignmentId}
+    </select>
+
+    <select id="getWorkAssignmentById" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT * FROM work_assignment WHERE id = #{workAssignmentId}
+    </select>
+
+    <select id="getJobById" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT id, userId FROM job WHERE id = #{jobId}
+    </select>
+
+    <insert id="insertAttendance">
+        INSERT INTO attendance (
+            work_assignment_id, 
+            student_id, 
+            check_in_time, 
+            is_late, 
+            late_minutes, 
+            attendance_status,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{workAssignmentId}, 
+            #{studentId}, 
+            #{checkInTime}, 
+            #{isLate}, 
+            #{lateMinutes}, 
+            'checked_in',
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateCheckOutTime">
+        UPDATE attendance SET check_out_time = #{checkOutTime}, attendance_status = 'completed' WHERE work_assignment_id = #{workAssignmentId}
+    </update>
+
+    <update id="updateWorkAssignmentStatus">
+        UPDATE work_assignment SET status = #{status} WHERE id = #{workAssignmentId}
+    </update>
+
+    <update id="updateAttendanceStatus">
+        UPDATE attendance 
+        SET attendance_status = #{status}, 
+            updated_at = CURRENT_TIMESTAMP
+        WHERE work_assignment_id = #{workAssignmentId}
+    </update>
+
+    <update id="clearLateFields">
+        UPDATE attendance SET is_late = 0, late_minutes = 0, updated_at = CURRENT_TIMESTAMP WHERE work_assignment_id = #{workAssignmentId}
+    </update>
+
+    <insert id="insertAbsentRecord">
+        INSERT INTO attendance (
+            work_assignment_id,
+            student_id,
+            is_absent,
+            absent_reason,
+            attendance_status,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{workAssignmentId},
+            #{studentId},
+            1,
+            #{reason},
+            'absent',
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="updateMerchantSettled">
+        UPDATE work_assignment 
+        SET merchant_settled = 1, 
+            settle_time = #{settleTime},
+            can_check_out = 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{workAssignmentId}
+    </update>
+    <update id="updateWorkDuration">
+        UPDATE attendance
+        SET work_minutes = #{workDurationMinutes},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE work_assignment_id = #{workAssignmentId}
+    </update>
+</mapper>

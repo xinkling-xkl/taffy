@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xk.mapper.JobApplicationMapper">
+    <resultMap id="BaseResultMap" type="com.xk.entity.JobApplication">
+        <id property="id" column="id"/>
+        <result property="jobId" column="job_id"/>
+        <result property="studentId" column="student_id"/>
+        <result property="merchantId" column="merchant_id"/>
+        <result property="studentName" column="student_name"/>
+        <result property="timeAvailability" column="time_availability"/>
+        <result property="creditScore" column="credit_score"/>
+        <result property="applicationContent" column="application_content"/>
+        <result property="selectedDates" column="selected_dates"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="message" column="message"/>
+    </resultMap>
+
+    <select id="getApplicationsByJobId" resultMap="BaseResultMap">
+        SELECT * FROM job_application WHERE job_id = #{jobId} ORDER BY created_at DESC
+    </select>
+
+    <select id="getApplicationsByStudentId" resultMap="BaseResultMap">
+        SELECT * FROM job_application WHERE student_id = #{studentId} ORDER BY created_at DESC
+    </select>
+
+    <select id="getApplicationsByMerchantId" resultMap="BaseResultMap">
+        SELECT * FROM job_application WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <insert id="insertApplication" parameterType="com.xk.entity.JobApplication" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO job_application (job_id, student_id, merchant_id, student_name,
+                                     time_availability, credit_score, application_content, selected_dates, status, created_at, updated_at)
+        VALUES (#{jobId}, #{studentId}, #{merchantId}, #{studentName},
+                #{timeAvailability, jdbcType=VARCHAR}, #{creditScore}, #{applicationContent},
+                #{selectedDates, jdbcType=VARCHAR}, 'pending', NOW(), NOW())
+    </insert>
+
+    <update id="updateApplicationStatus">
+        UPDATE job_application
+        SET status = #{status}, updated_at = NOW()
+        <if test="message != null">
+            , message = #{message}
+        </if>
+        WHERE id = #{id}
+    </update>
+
+    <select id="getApplicationById" resultMap="BaseResultMap">
+        SELECT * FROM job_application WHERE id = #{id}
+    </select>
+
+    <select id="getApplicationByJobAndStudent" resultMap="BaseResultMap">
+        SELECT * FROM job_application
+        WHERE job_id = #{jobId} AND student_id = #{studentId}
+        ORDER BY id DESC LIMIT 1
+    </select>
+
+    <select id="getApplicationsByJobIdAndStatus" resultMap="BaseResultMap">
+        SELECT * FROM job_application
+        WHERE job_id = #{jobId} AND status = #{status}
+    </select>
+
+    <select id="getAcceptedApplicationsCount" resultType="int">
+        SELECT COUNT(*) FROM job_application
+        WHERE job_id = #{jobId} AND status = 'accepted'
+    </select>
+
+    <update id="updateApplication" parameterType="com.xk.entity.JobApplication">
+        UPDATE job_application
+        SET status = #{status},
+            time_availability = #{timeAvailability, jdbcType=VARCHAR},
+            application_content = #{applicationContent},
+            selected_dates = #{selectedDates, jdbcType=VARCHAR},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+</mapper>

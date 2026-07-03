@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xk.mapper.StatisticsMapper">
+
+    <!-- 商户 - 各兼职招聘进度 -->
+    <select id="getRecruitmentProgress" resultType="map">
+        SELECT j.id,
+               j.title,
+               CAST(REGEXP_REPLACE(COALESCE(j.recruitmentLimit, '0'), '[^0-9]', '') AS UNSIGNED) AS needed,
+               COUNT(ja.id)                                                     AS hired,
+               CONCAT(
+                       ROUND(
+                               COUNT(ja.id) * 100.0 /
+                               NULLIF(CAST(REGEXP_REPLACE(COALESCE(j.recruitmentLimit, '0'), '[^0-9]', '') AS UNSIGNED), 0),
+                               1
+                       ),
+                       '%'
+               )                                                                 AS rate
+        FROM job j
+                 LEFT JOIN job_application ja ON ja.job_id = j.id AND ja.status = 'accepted'
+        WHERE j.userId = #{merchantId}
+        GROUP BY j.id
+    </select>
+
+    <!-- 商户 - 考勤状态分布 -->
+    <select id="getAttendanceDistribution" resultType="map">
+        SELECT a.attendance_status AS name, COUNT(*) AS value
+        FROM attendance a
+            JOIN work_assignment wa ON wa.id = a.work_assignment_id
+            JOIN job j ON j.id = wa.job_id
+        WHERE j.userId = #{merchantId}
+        GROUP BY a.attendance_status
+    </select>
+
+    <!-- 商户 - 近7天签到趋势 -->
+    <select id="getDailyCheckinTrend" resultType="map">
+        SELECT DATE(a.check_in_time) AS date, COUNT(*) AS count
+        FROM attendance a
+            JOIN work_assignment wa ON wa.id = a.work_assignment_id
+            JOIN job j ON j.id = wa.job_id
+        WHERE j.userId = #{merchantId}
+          AND a.check_in_time >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+        GROUP BY DATE(a.check_in_time)
+        ORDER BY date
+    </select>
+
+    <!-- 商户 - 学生工时 TOP5 -->
+    <select id="getTopWorkers" resultType="map">
+        SELECT u.name, SUM(a.work_minutes) AS total_minutes
+        FROM attendance a
+                 JOIN work_assignment wa ON wa.id = a.work_assignment_id
+                 JOIN job j ON j.id = wa.job_id
+                 JOIN user u ON u.id = a.student_id
+        WHERE j.userId = #{merchantId}
+        GROUP BY a.student_id
+        ORDER BY total_minutes DESC
+            LIMIT #{limit}
+    </select>
+
+    <!-- 学生 - 信用分变化趋势（近30天） -->
+    <select id="getCreditTrend" resultType="map">
+        SELECT DATE(created_at) AS date, credit_after AS credit
+        FROM credit_record
+        WHERE user_id = #{studentId}
+          AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        ORDER BY created_at
+    </select>
+
+    <!-- 学生 - 近30天工作时长 -->
+    <select id="getWorkHours" resultType="map">
+        SELECT DATE(wa.work_date) AS date, SUM(a.work_minutes) AS minutes
+        FROM attendance a
+            JOIN work_assignment wa ON wa.id = a.work_assignment_id
+        WHERE a.student_id = #{studentId}
+          AND wa.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(wa.work_date)
+        ORDER BY date
+    </select>
+
+    <!-- 学生 - 兼职类型分布（日结/周结） -->
+    <select id="getJobTypeDistribution" resultType="map">
+        SELECT IFNULL(j.remunerationType, '其他') AS name, COUNT(*) AS value
+        FROM work_assignment wa
+            JOIN job j ON j.id = wa.job_id
+        WHERE wa.student_id = #{studentId}
+        GROUP BY j.remunerationType
+    </select>
+
+    <!-- 管理员 - 近30天新增用户 -->
+    <select id="getUserGrowth" resultType="map">
+        SELECT DATE(created_at) AS date, COUNT(*) AS count
+        FROM user
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY DATE(created_at)
+        ORDER BY date
+    </select>
+
+    <!-- 管理员 - 用户身份分布 -->
+    <select id="getIdentityDistribution" resultType="map">
+        SELECT identity AS name, COUNT(*) AS value
+        FROM user
+        GROUP BY identity
+    </select>
+
+    <!-- 管理员 - 兼职状态统计 -->
+    <select id="getJobStatusStats" resultType="map">
+        SELECT status AS name, COUNT(*) AS value
+        FROM job
+        GROUP BY status
+    </select>
+
+    <!-- 管理员 - 全平台考勤状态分布 -->
+    <select id="getAttendanceOverall" resultType="map">
+        SELECT attendance_status AS name, COUNT(*) AS value
+        FROM attendance
+        GROUP BY attendance_status
+    </select>
+
+    <!-- 商户信用趋势（近30天，取每天最后一条记录的信用分） -->
+    <select id="getMerchantCreditTrend" resultType="map">
+        SELECT t.record_date as date, cr.credit_after as credit
+        FROM (
+            SELECT DATE(created_at) AS record_date, MAX(created_at) AS max_time
+            FROM credit_record
+            WHERE user_id = #{merchantId}
+            AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(created_at)
+            ) t
+            INNER JOIN credit_record cr ON cr.user_id = #{merchantId}
+            AND cr.created_at = t.max_time
+        ORDER BY t.record_date
+    </select>
+
+    <!-- 商户本周评价摘要 -->
+    <select id="getMerchantEvaluationSummary" resultType="map">
+        SELECT
+            SUM(CASE WHEN is_positive = 1 THEN 1 ELSE 0 END) AS good,
+            SUM(CASE WHEN is_positive = 0 THEN 1 ELSE 0 END) AS bad
+        FROM evaluation
+        WHERE evaluated_id = #{merchantId}
+          AND created_at &gt;= #{weekStart}
+          AND created_at &lt; #{weekEnd}
+    </select>
+</mapper>

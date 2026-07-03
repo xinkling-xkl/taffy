@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xk.mapper.AssignmentMapper">
+
+    <select id="getStudentAssignments" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            wa.id,
+            wa.student_id,
+            wa.job_id,
+            wa.work_date,
+            CASE DAYOFWEEK(wa.work_date)
+                WHEN 1 THEN 7
+                ELSE DAYOFWEEK(wa.work_date) - 1
+            END as day_of_week,
+            wa.time_slot,
+            wa.status,
+            j.title as jobTitle,
+            j.address,
+            j.salary
+        FROM
+            work_assignment wa
+        LEFT JOIN
+            job j ON wa.job_id = j.id
+        WHERE
+            wa.student_id = #{studentId}
+            AND wa.status IN ('assigned', 'checked_in', 'pending_confirmation')
+        ORDER BY
+            wa.work_date, wa.time_slot
+    </select>
+
+    <select id="getMerchantAssignments" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT
+            wa.id,
+            wa.student_id,
+            wa.job_id,
+            wa.work_date,
+            CASE DAYOFWEEK(wa.work_date)
+                WHEN 1 THEN 7 -- 周日
+                ELSE DAYOFWEEK(wa.work_date) - 1
+            END as day_of_week,
+            wa.time_slot,
+            wa.status,
+            j.title as jobTitle,
+            j.address,
+            j.salary,
+            u.name as studentName,
+            u.credit as studentCredit
+        FROM
+            work_assignment wa
+        LEFT JOIN
+            job j ON wa.job_id = j.id
+        LEFT JOIN
+            user u ON wa.student_id = u.id
+        WHERE
+            j.userId = #{merchantId}
+            AND wa.status = 'assigned'
+        ORDER BY
+            wa.work_date, wa.time_slot
+    </select>
+
+    <select id="getAssignmentById" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT * FROM work_assignment WHERE id = #{assignmentId}
+    </select>
+
+    <select id="getRequirementById" parameterType="java.lang.Integer" resultType="java.util.Map">
+        SELECT * FROM merchant_requirement WHERE id = #{requirementId}
+    </select>
+
+    <update id="updateAssignmentStatus">
+        UPDATE work_assignment SET status = #{status} WHERE id = #{assignmentId}
+    </update>
+
+    <insert id="insertAssignment">
+        INSERT INTO work_assignment (student_id, job_id, merchant_requirement_id, work_date, time_slot, status, created_at)
+        VALUES (#{studentId}, #{jobId}, COALESCE(#{merchantRequirementId}, 0), #{workDate}, #{timeSlot}, #{status}, #{createdAt})
+    </insert>
+    
+    <update id="updateStudentSchedule">
+        UPDATE student_schedule 
+        SET is_available = #{isAvailable} 
+        WHERE student_id = #{studentId} 
+        AND day_of_week = #{dayOfWeek} 
+        AND time_slot = #{timeSlot}
+    </update>
+    <select id="getRequirementsByJobId" resultType="map">
+        SELECT id, job_id, day_of_week, time_slot, needed_count, filled_count
+        FROM merchant_requirement
+        WHERE job_id = #{jobId}
+    </select>
+</mapper>
